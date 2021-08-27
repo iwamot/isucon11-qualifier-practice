@@ -11,6 +11,8 @@ module Isucondition
     configure :development do
       require 'sinatra/reloader'
       register Sinatra::Reloader
+
+      enable :logging
     end
 
     SESSION_NAME = 'isucondition_ruby'
