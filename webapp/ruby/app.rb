@@ -646,24 +646,26 @@ module Isucondition
       halt_error 400, 'bad request body' unless json_params.kind_of?(Array)
       halt_error 400, 'bad request body' if json_params.empty?
 
-      db_transaction do
-        count = db.xquery('SELECT COUNT(*) AS `cnt` FROM `isu` WHERE `jia_isu_uuid` = ?', jia_isu_uuid).first
-        halt_error 404, 'not found: isu' if count.fetch(:cnt).zero?
+      count = db.xquery('SELECT COUNT(*) AS `cnt` FROM `isu` WHERE `jia_isu_uuid` = ?', jia_isu_uuid).first
+      halt_error 404, 'not found: isu' if count.fetch(:cnt).zero?
 
-        json_params.each do |cond|
-          timestamp = Time.at(cond.fetch(:timestamp))
-          halt_error 400, 'bad request body' unless valid_condition_format?(cond.fetch(:condition))
+      values = json_params.flat_map do |cond|
+        timestamp = Time.at(cond.fetch(:timestamp))
+        halt_error 400, 'bad request body' unless valid_condition_format?(cond.fetch(:condition))
 
-          db.xquery(
-            'INSERT INTO `isu_condition` (`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`) VALUES (?, ?, ?, ?, ?)',
-            jia_isu_uuid,
-            timestamp,
-            cond.fetch(:is_sitting),
-            cond.fetch(:condition),
-            cond.fetch(:message),
-          )
-        end
+        [
+          jia_isu_uuid,
+          timestamp,
+          cond.fetch(:is_sitting),
+          cond.fetch(:condition),
+          cond.fetch(:message),
+        ]
       end
+
+      db.xquery(
+        'INSERT INTO `isu_condition` (`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`) VALUES ' + Array.new(json_params.size, '(?, ?, ?, ?, ?)').join(', '),
+        values
+      )
 
       status 202
       ''
