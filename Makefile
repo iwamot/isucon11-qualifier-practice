@@ -16,7 +16,7 @@ enable-ruby:
 
 .PHONY: enable-go
 enable-go:
-	sudo systemctl disable --now isucondition.ruby.service && sudo systemctl enable --now isucondition.go.service
+	cd webapp/go && go build -o isucondition main.go && sudo systemctl disable --now isucondition.ruby.service && sudo systemctl enable --now isucondition.go.service
 
 .PHONY: status-ruby
 status-ruby:
@@ -35,7 +35,7 @@ rackup:
 bench-ruby: enable-ruby clear-log restart-mysql restart-ruby restart-nginx bench
 
 .PHONY: bench-go
-bench-go: enable-go clear-log restart-mysql restart-nginx bench
+bench-go: enable-go clear-log restart-mysql restart-go restart-nginx bench
 
 .PHONY: bench
 bench:
@@ -63,6 +63,10 @@ copy-mysql-conf:
 .PHONY: restart-ruby
 restart-ruby:
 	sudo systemctl daemon-reload && sudo systemctl restart isucondition.ruby.service
+
+.PHONY: restart-go
+restart-go:
+	sudo systemctl daemon-reload && sudo systemctl restart isucondition.go.service
 
 .PHONY: restart-nginx
 restart-nginx:
