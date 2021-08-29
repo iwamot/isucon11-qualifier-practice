@@ -105,11 +105,15 @@ module Isucondition
 
 
       def user_id_from_session
+        @valid_users ||= {}
         jia_user_id = session[:jia_user_id]
+        return jia_user_id if @valid_users[jia_user_id]
+
         return nil if !jia_user_id || jia_user_id.empty?
         count = db.xquery('SELECT COUNT(*) AS `cnt` FROM `user` WHERE `jia_user_id` = ?', jia_user_id).first
         return nil if count.fetch(:cnt).to_i.zero?
 
+        @valid_users[jia_user_id] = true
         jia_user_id
       end
 
@@ -137,30 +141,7 @@ module Isucondition
 
       # ISUのコンディションの文字列がcsv形式になっているか検証
       def valid_condition_format?(condition_str)
-        keys = %w(is_dirty= is_overweight= is_broken=)
-        value_true = 'true'
-        value_false = 'false'
-
-        idx_cond_str = 0
-        keys.each_with_index do |key, idx_keys|
-          return false unless condition_str[idx_cond_str..-1].start_with?(key)
-          idx_cond_str += key.size
-          case
-          when condition_str[idx_cond_str..-1].start_with?(value_true)
-            idx_cond_str += value_true.size
-          when condition_str[idx_cond_str..-1].start_with?(value_false)
-            idx_cond_str += value_false.size
-          else
-            return false
-          end
-
-          if idx_keys < (keys.size-1)
-            return false unless condition_str[idx_cond_str] == ?,
-            idx_cond_str += 1
-          end
-        end
-
-        idx_cond_str == condition_str.size
+        /\Ais_dirty=(?:true|false),is_overweight=(?:true|false),is_broken=(?:true|false)\z/.match?(condition_str)
       end
     end
 
@@ -369,7 +350,12 @@ module Isucondition
 
     # グラフのデータ点を一日分生成
     def generate_isu_graph_response(jia_isu_uuid, graph_date)
-      rows = db.xquery('SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = ? ORDER BY `timestamp` ASC', jia_isu_uuid)
+      rows = db.xquery(
+        'SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = ? AND `timestamp` >= ? AND `timestamp` < ? ORDER BY `timestamp` ASC',
+        jia_isu_uuid,
+        graph_date,
+        graph_date + (60 * 60 * 24)
+      )
 
       data_points = []
       start_time_in_this_hour = Time.at(0)
