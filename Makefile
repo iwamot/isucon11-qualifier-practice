@@ -26,6 +26,10 @@ status-ruby:
 status-go:
 	systemctl status isucondition.go.service --no-pager
 
+.PHONY: rackup
+rackup:
+	bin/rackup.sh
+
 
 .PHONY: bench-ruby
 bench-ruby: enable-ruby clear-log restart-mysql restart-ruby restart-nginx bench

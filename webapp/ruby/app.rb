@@ -13,6 +13,11 @@ module Isucondition
       register Sinatra::Reloader
 
       enable :logging
+
+      if ENV['USE_LINEPROF']
+        require 'rack-lineprof'
+        use Rack::Lineprof, profile: 'app.rb'
+      end
     end
 
     SESSION_NAME = 'isucondition_ruby'
