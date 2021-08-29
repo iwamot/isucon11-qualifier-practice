@@ -121,14 +121,9 @@ module Isucondition
 
       # ISUのコンディションの文字列からコンディションレベルを計算
       def calculate_condition_level(condition)
-        idx = -1
-        warn_count = 0
-        while idx
-          idx = condition.index('=true', idx+1)
-          warn_count += 1 if idx
-        end
-
-        case warn_count
+        @condition_levels ||= {}
+        return @condition_levels[condition] if @condition_levels[condition]
+        @condition_levels[condition] = case condition.scan('=true').size
         when 0
           CONDITION_LEVEL_INFO
         when 1, 2
@@ -588,13 +583,13 @@ module Isucondition
       character_list = db.query('SELECT `character` FROM `isu` GROUP BY `character`')
 
       res = character_list.map do |character|
-        isu_list = db.xquery('SELECT * FROM `isu` WHERE `character` = ?', character.fetch(:character))
+        isu_list = db.xquery('SELECT `id`, `jia_isu_uuid` FROM `isu` WHERE `character` = ?', character.fetch(:character))
         character_info_isu_conditions = []
         character_warning_isu_conditions = []
         character_critical_isu_conditions = []
 
         isu_list.each do |isu|
-          conditions = db.xquery('SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = ? ORDER BY timestamp DESC', isu.fetch(:jia_isu_uuid)).to_a
+          conditions = db.xquery('SELECT `timestamp`, `condition` FROM `isu_condition` WHERE `jia_isu_uuid` = ? ORDER BY timestamp DESC LIMIT 1', isu.fetch(:jia_isu_uuid)).to_a
           unless conditions.empty?
             isu_last_condition = conditions.first
             condition_level = calculate_condition_level(isu_last_condition.fetch(:condition))
